@@ -1,0 +1,18 @@
+[build-system]
+requires =["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cat-lock"
+version = "0.1.0"
+description = "A cat shield lock screen that blocks input."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "Pillow>=10.0.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.25.0",
+]
+
+[project.scripts]
+cat-lock = "cat_lock.main:cli_entry"
