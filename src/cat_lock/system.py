@@ -3,22 +3,50 @@ import os
 import subprocess
 import atexit
 
+import os
+import sys
+import shutil
+
+import os
+import sys
+import shutil
+import time
+import threading
+import pyautogui
+
+# Disable the failsafe (so it doesn't crash if you accidentally move mouse to corner)
+pyautogui.FAILSAFE = False
+
+def anti_sleep_worker():
+    """Nudges the mouse slightly every 3 minutes to keep the screen awake."""
+    while True:
+        # Move mouse 1 pixel right, then 1 pixel left
+        pyautogui.moveRel(1, 0, duration=0.1)
+        pyautogui.moveRel(-1, 0, duration=0.1)
+        # Sleep for 180 seconds (3 minutes)
+        time.sleep(180)
+
 def inhibit_sleep() -> bool:
     """Relaunches the script wrapped in systemd-inhibit. Returns False if unsupported."""
     if len(sys.argv) > 1 and sys.argv[-1] == "inhibited":
+        # Start the anti-sleep thread in the child process
+        threading.Thread(target=anti_sleep_worker, daemon=True).start()
         return True 
 
-    print("Activating sleep block and cat shield...")
+    inhibit_cmd = shutil.which("systemd-inhibit")
+    if not inhibit_cmd:
+        print("systemd-inhibit not found, starting anti-sleep thread anyway...")
+        threading.Thread(target=anti_sleep_worker, daemon=True).start()
+        return True
+
+    print("Activating systemd-inhibit and anti-sleep thread...")
+    python_exe = sys.executable
+    args = [inhibit_cmd, "--what=sleep:idle", "--who=CatShield", "--why=Waiting for user input", python_exe] + sys.argv + ["inhibited"]
+    
     try:
-        args = ["systemd-inhibit", 
-                "--what=sleep:idle", 
-                "--who=CatShield", 
-                "--why=Waiting for user input", 
-                sys.executable] + sys.argv + ["inhibited"]
-        
         os.execvp(args[0], args)
-    except FileNotFoundError:
-        print("systemd-inhibit not found, continuing without sleep block...")
+    except Exception as e:
+        print(f"Failed to relaunch: {e}")
         return False
     return True
 
